@@ -1,6 +1,10 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 import client
+from QWorkers.ClientWorker import ClientWorker
+from QWorkers.RecvSendWorker import RecvWorker, SendWorker
+
 
 class ClientApp(QWidget):
 
@@ -8,6 +12,7 @@ class ClientApp(QWidget):
         super().__init__()
         self.client = client.Client()
         self.initUI()
+        self.initThread()
 
     def initUI(self):
         # title and size
@@ -34,14 +39,12 @@ class ClientApp(QWidget):
 
         # connect
         self.connectBtn = QPushButton('connect()', self)
-        self.connectBtn.clicked.connect(self.connect)
         connectHbox.addWidget(self.connectBtn)
         mainBox.addLayout(connectHbox)
 
         sendHBox = QHBoxLayout()
         # send message
         self.sendBtn = QPushButton('send', self)
-        self.sendBtn.clicked.connect(self.send)
         sendHBox.addWidget(self.sendBtn)
 
         # text input
@@ -58,38 +61,89 @@ class ClientApp(QWidget):
         # show
         self.show()
 
-    def socket(self):
+    def initThread(self):
+        self.worker = ClientWorker(self.client)
+        self.workerThread = QThread()
+        self.worker.moveToThread(self.workerThread)
+        self.workerThread.start()
+
+        # 각 버튼과 연결
+        # socket()
+        self.sockBtn.clicked.connect(self.worker.socket)
+        self.worker.sock_signal.connect(self.socket)
+
+        # connect()
+        self.connectBtn.clicked.connect(self.beforeConnect)
+        self.worker.before_connect_signal.connect(self.worker.connect)
+        self.worker.after_connect_signal.connect(self.afterConnect)
+
+    @pyqtSlot(bool)
+    def socket(self, isSuccess):
         try:
-            self.client.socket()
-            self.setText("setting socket")
+            if isSuccess:
+                self.setText("[SystemInfo]setting socket")
         except Exception as error:
             print(error)
 
-    def connect(self):
+    def beforeConnect(self):
         try:
             ip = self.ip.text()
             port = int(self.port.text())
-            self.client.connect(ip, port)
-            self.setText("connect complete")
+            self.worker.before_connect_signal.emit(ip, port)
         except Exception as error:
             print(error)
 
-    def send(self):
-        self.client.send(self.chatInput.text())
-        self.recv()
+    @pyqtSlot(bool)
+    def afterConnect(self, isSuccess):
+        try:
+            if isSuccess:
+                self.setText("[SystemInfo]connect suceess")
 
-    def recv(self):
-        msg = self.client.recv()
-        self.setText(msg)
-        self.send()
+                self.workerThread.quit()
+                # recv 연결하기
+                self.recv_worker = RecvWorker(self.client)
+                self.recvThread = QThread()
+                self.recv_worker.moveToThread(self.recvThread)
+                self.recvThread.start()
+
+                self.recv_worker.after_recv_signal.connect(self.recv)
+                self.recv_worker.before_recv_signal.emit()
+
+                # send 연결하기
+                self.send_worker = SendWorker(self.client)
+                self.sendThread = QThread()
+                self.send_worker.moveToThread(self.sendThread)
+                self.sendThread.start()
+                self.send_worker.after_send_signal.connect(self.afterSend)
+                self.sendBtn.clicked.connect(self.beforeSend)
+
+        except Exception as error:
+            print(error)
+
+    def beforeSend(self):
+        self.send_worker.before_send_signal.emit(self.chatInput.text())
+
+    @pyqtSlot(bool, str)
+    def afterSend(self,isSuccess, data):
+        if isSuccess:
+            self.setText("[Client]"+data)
+
+    @pyqtSlot(str)
+    def recv(self, data):
+        self.setText("[Server]"+data)
 
     def setText(self, newTxt):
-        txt = self.log.toPlainText()
-        self.log.setText(txt + newTxt +"\n")
-
+        try:
+            txt = self.log.toPlainText()
+            self.log.setText(txt + newTxt +"\n")
+        except Exception as e:
+            print("에러발생", e)
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = ClientApp()
-    sys.exit(app.exec_())
+    try:
+        app = QApplication(sys.argv)
+        ex = ClientApp()
+        sys.exit(app.exec_())
+    except Exception as e:
+        print(e)

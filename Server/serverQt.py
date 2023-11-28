@@ -1,6 +1,10 @@
 import sys
+
+from PyQt5.QtCore import QThread, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit
 import server
+from QWorkers.RecvSendWorker import RecvWorker, SendWorker
+from QWorkers.ServerWorker import ServerWorker
 
 class ServerApp(QWidget):
 
@@ -8,6 +12,7 @@ class ServerApp(QWidget):
         super().__init__()
         self.server = server.Server()
         self.initUI()
+        self.initThread()
 
     def initUI(self):
         # title and size
@@ -20,7 +25,6 @@ class ServerApp(QWidget):
         sockHbox = QHBoxLayout()
         sockHbox.addStretch(3)
         self.sockBtn = QPushButton('socket()', self)
-        self.sockBtn.clicked.connect(self.socket)
         sockHbox.addWidget(self.sockBtn)
         mainBox.addLayout(sockHbox)
 
@@ -34,18 +38,15 @@ class ServerApp(QWidget):
 
         # bind
         self.bindBtn = QPushButton('bind()', self)
-        self.bindBtn.clicked.connect(self.bind)
         bindHbox.addWidget(self.bindBtn)
         mainBox.addLayout(bindHbox)
 
         listenAccessHBox = QHBoxLayout()
         # listen message
         self.listenBtn = QPushButton('listen', self)
-        self.listenBtn.clicked.connect(self.listen)
         listenAccessHBox.addWidget(self.listenBtn)
         # access message
         self.accessBtn = QPushButton('access', self)
-        self.accessBtn.clicked.connect(self.access)
         listenAccessHBox.addWidget(self.accessBtn)
         mainBox.addLayout(listenAccessHBox)
 
@@ -53,7 +54,6 @@ class ServerApp(QWidget):
         sendHBox = QHBoxLayout()
         # send message
         self.sendBtn = QPushButton('send', self)
-        self.sendBtn.clicked.connect(self.send)
         sendHBox.addWidget(self.sendBtn)
 
         # text input
@@ -70,10 +70,31 @@ class ServerApp(QWidget):
         # show
         self.show()
 
+    def initThread(self):
+        self.listenWorker = ServerWorker(self.server)
+        self.listenThread = QThread()
+        self.listenWorker.moveToThread(self.listenThread)
+        self.listenThread.start()
+
+        # 각 버튼과 연결
+        # socket()
+        self.sockBtn.clicked.connect(self.listenWorker.socket)
+        self.listenWorker.sock_signal.connect(self.socket)
+
+        # bind()
+        self.bindBtn.clicked.connect(self.bind)
+
+        # listen
+        self.listenBtn.clicked.connect(self.listenWorker.listen)
+        self.listenWorker.listen_signal.connect(self.afterListen)
+
+        # accept
+        self.accessBtn.clicked.connect(self.listenWorker.accept)
+        self.listenWorker.accept_signal.connect(self.accept)
+
     def socket(self):
         try:
-            self.server.socket()
-            self.setText("setting socket")
+            self.setText("[SystemInfo]setting socket")
         except Exception as error:
             print(error)
 
@@ -81,32 +102,54 @@ class ServerApp(QWidget):
         try:
             ip = self.ip.text()
             port = int(self.port.text())
-            self.server.bind(ip, port)
-            self.setText("bind complete")
+            # bind는 멀티 쓰레드로 가면 프로그램이 꺼진다 -> 왜?
+            self.server.bind(ip,port)
+            # self.listenWorker.before_bind_signal.emit(ip, port)
+            self.setText("[SystemInfo]bind")
         except Exception as error:
             print(error)
 
-    def listen(self):
-        try:
-            self.server.listen()
-            self.setText("listening now")
-            self.access()
-        except Exception as e:
-            print(e)
+    @pyqtSlot(bool)
+    def afterListen(self, isSuccess):
+        if isSuccess:
+            self.setText("[SystemInfo]Listen now")
+        else:
+            self.setText("[SystemInfo]Listen fail")
 
-    def access(self):
-        addr = self.server.accept()
-        self.setText(f"client:{addr} access")
-        self.recv()
+    @pyqtSlot(tuple)
+    def accept(self, addr):
+        self.setText(f"[SystemInfo] client:{addr} access")
 
-    def send(self):
-        self.server.send(self.chatInput.text())
-        self.recv()
+        # set send-recv worker
 
-    def recv(self):
-        msg = self.server.recv()
-        self.setText(msg)
-        self.send()
+        # recv 연결하기
+        self.recv_worker = RecvWorker(self.server)
+        self.recvThread = QThread()
+        self.recv_worker.moveToThread(self.recvThread)
+        self.recvThread.start()
+
+        self.recv_worker.after_recv_signal.connect(self.recv)
+        self.recv_worker.before_recv_signal.emit()
+
+        # send 연결하기
+        self.send_worker = SendWorker(self.server)
+        self.sendThread = QThread()
+        self.send_worker.moveToThread(self.sendThread)
+        self.sendThread.start()
+        self.send_worker.after_send_signal.connect(self.afterSend)
+        self.sendBtn.clicked.connect(self.beforeSend)
+
+    def beforeSend(self):
+        self.send_worker.before_send_signal.emit(self.chatInput.text())
+
+    @pyqtSlot(bool, str)
+    def afterSend(self,isSuccess, data):
+        if isSuccess:
+            self.setText("[Server]"+data)
+
+    @pyqtSlot(str)
+    def recv(self, data):
+        self.setText("[Client]"+data)
 
     def setText(self, newTxt):
         txt = self.log.toPlainText()

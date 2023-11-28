@@ -15,7 +15,7 @@ class Client:
     self.socket.send(code)
     
   def recv(self):
-    # Client-Recv 
+    # Client-Recv
     code = self.socket.recv(65536) # MaxLength
     msg = code.decode('utf-8')
     return msg
@@ -24,7 +24,7 @@ if __name__ == "__main__":
   server = Client()
   server.socket()
   server.connect("127.0.0.1", 8080)
+  print(server.recv())
   while(True):
     server.send(input())
     print(server.recv())
-    
