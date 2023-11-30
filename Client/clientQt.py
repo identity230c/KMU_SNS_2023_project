@@ -117,6 +117,8 @@ class ClientApp(QWidget):
                 self.send_worker.after_send_signal.connect(self.afterSend)
                 self.sendBtn.clicked.connect(self.beforeSend)
 
+                self.recv_worker.disconnect_signal.connect(self.disconnectSocket)
+
         except Exception as error:
             print(error)
 
@@ -139,6 +141,12 @@ class ClientApp(QWidget):
         except Exception as e:
             print("에러발생", e)
 
+
+    @pyqtSlot()
+    def disconnectSocket(self):
+        self.recvThread.quit()
+        self.sendThread.quit()
+        self.setText("서버와의 연결이 끊어졌습니다")
 
 if __name__ == '__main__':
     try:

@@ -5,11 +5,14 @@ from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QL
 import server
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from QWorkers.ServerWorker import ServerWorker
+from Server.ServerToCLientQt import ServerToClient
+
 
 class ServerApp(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.s2cList = []
         self.server = server.Server()
         self.initUI()
         self.initThread()
@@ -121,23 +124,10 @@ class ServerApp(QWidget):
         self.setText(f"[SystemInfo] client:{addr} access")
 
         # set send-recv worker
-
-        # recv 연결하기
-        self.recv_worker = RecvWorker(self.server)
-        self.recvThread = QThread()
-        self.recv_worker.moveToThread(self.recvThread)
-        self.recvThread.start()
-
-        self.recv_worker.after_recv_signal.connect(self.recv)
-        self.recv_worker.before_recv_signal.emit()
-
-        # send 연결하기
-        self.send_worker = SendWorker(self.server)
-        self.sendThread = QThread()
-        self.send_worker.moveToThread(self.sendThread)
-        self.sendThread.start()
-        self.send_worker.after_send_signal.connect(self.afterSend)
-        self.sendBtn.clicked.connect(self.beforeSend)
+        try:
+            self.s2cList.append(ServerToClient(self.server.clientSock))
+        except Exception as e:
+            print(e)
 
     def beforeSend(self):
         self.send_worker.before_send_signal.emit(self.chatInput.text())

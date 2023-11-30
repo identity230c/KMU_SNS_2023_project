@@ -34,8 +34,9 @@ class ServerWorker(QObject):
 
     def accept(self):
         try:
-            addr = self.serverSock.accept()
-            print(addr)
-            self.accept_signal.emit(addr)
+            while True:
+                addr = self.serverSock.accept()
+                print(addr)
+                self.accept_signal.emit(addr)
         except Exception as e:
             print(e)

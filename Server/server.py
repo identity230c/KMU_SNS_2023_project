@@ -5,14 +5,14 @@ class Server:
   def socket(self):
     # Server-socket
     self.listenSock = socket(AF_INET, SOCK_STREAM)
-    
+
   def bind(self, ip, port):
     # Server-bind
     self.listenSock.bind((ip,port))
 
   def listen(self):
     # Server-listen
-    self.listenSock.listen(1)
+    self.listenSock.listen(3)
     
   def accept(self):
     # client sock and addr
@@ -29,7 +29,23 @@ class Server:
     code = self.clientSock.recv(65536) # MaxLength
     msg = code.decode('utf-8')
     return msg
-    
+
+class RecvSendSocket:
+  def __init__(self, socket):
+    self.socket = socket
+
+  def send(self, msg):
+    # Server-Send
+    code = msg.encode('utf-8')
+    self.socket.send(code)
+
+  def recv(self):
+    # Server-Recv
+    code = self.socket.recv(65536)  # MaxLength
+    msg = code.decode('utf-8')
+    return msg
+
+
 if __name__ == "__main__":
   server = Server()
   server.socket()

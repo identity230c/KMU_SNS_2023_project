@@ -4,6 +4,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 class RecvWorker(QObject):
     before_recv_signal = pyqtSignal()
     after_recv_signal = pyqtSignal(str)
+    disconnect_signal = pyqtSignal()
 
     def __init__(self, socket):
         super(RecvWorker, self).__init__()
@@ -18,6 +19,9 @@ class RecvWorker(QObject):
                 self.after_recv_signal.emit(data)
             except Exception as e:
                 print("에러발생", e)
+                self.disconnect_signal.emit()
+                break
+
 
 class SendWorker(QObject):
     before_send_signal = pyqtSignal(str)
