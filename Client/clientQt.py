@@ -1,4 +1,5 @@
 import sys
+from socket import *
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 import client
@@ -50,7 +51,19 @@ class ClientApp(QWidget):
         # text input
         self.chatInput = QLineEdit(self)
         sendHBox.addWidget(self.chatInput)
+
+        dnsHBox = QHBoxLayout()
+        # gethostbyname
+        self.gethostbynameBtn = QPushButton('gethostbyname', self)
+        dnsHBox.addWidget(self.gethostbynameBtn)
+
+        # getnamebyhost
+        self.getnamebyhostBtn = QPushButton('getnamebyhost', self)
+        dnsHBox.addWidget(self.getnamebyhostBtn)
+
         mainBox.addLayout(sendHBox)
+        mainBox.addLayout(dnsHBox)
+
 
         # log text
         self.log = QTextEdit()
@@ -77,6 +90,9 @@ class ClientApp(QWidget):
         self.worker.before_connect_signal.connect(self.worker.connect)
         self.worker.after_connect_signal.connect(self.afterConnect)
 
+        self.gethostbynameBtn.clicked.connect(self.gethostbyname)
+        self.getnamebyhostBtn.clicked.connect(self.getnamebyhost)
+
     @pyqtSlot(bool)
     def socket(self, isSuccess):
         try:
@@ -90,6 +106,9 @@ class ClientApp(QWidget):
             ip = self.ip.text()
             port = int(self.port.text())
             self.worker.before_connect_signal.emit(ip, port)
+
+            ipv4_binary_address = inet_pton(AF_INET, ip)
+            self.setText(f"pton({ip}) = {hex(int.from_bytes(ipv4_binary_address, sys.byteorder))}")
         except Exception as error:
             print(error)
 
@@ -131,6 +150,24 @@ class ClientApp(QWidget):
     @pyqtSlot(str)
     def recv(self, data):
         self.setText("[Server]"+data)
+
+    @pyqtSlot(bool)
+    def getnamebyhost(self):
+        ip_address = self.chatInput.text()
+        try:
+            host_name, _ = getnameinfo((ip_address, 0), NI_NAMEREQD)
+            self.setText(f"The host name for IP address {ip_address} is: {host_name}")
+        except error as e:
+            self.setText(f"Unable to get host name for {ip_address}. Error: {e}")
+
+    @pyqtSlot(bool)
+    def gethostbyname(self):
+        domain = self.chatInput.text()
+        try:
+            ip_address = gethostbyname(domain)
+            self.setText(f"The IP address of {domain} is: {ip_address}")
+        except error as e:
+            self.setText(f"Unable to get IP address for {domain}. Error: {e}")
 
     def setText(self, newTxt):
         try:

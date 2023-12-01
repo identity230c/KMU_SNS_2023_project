@@ -1,4 +1,5 @@
 import sys
+from socket import * 
 
 from PyQt5.QtCore import QThread, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit
@@ -106,6 +107,9 @@ class ServerApp(QWidget):
             self.server.bind(ip,port)
             # self.listenWorker.before_bind_signal.emit(ip, port)
             self.setText("[SystemInfo]bind")
+
+            ipv4_binary_address = inet_pton(AF_INET, ip)
+            self.setText(f"IPv4 Address: {int.from_bytes(ipv4_binary_address, sys.byteorder)} {ipv4_binary_address}")
         except Exception as error:
             print(error)
 
