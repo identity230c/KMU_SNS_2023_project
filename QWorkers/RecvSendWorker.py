@@ -1,6 +1,5 @@
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
-
 class RecvWorker(QObject):
     before_recv_signal = pyqtSignal()
     after_recv_signal = pyqtSignal(str)

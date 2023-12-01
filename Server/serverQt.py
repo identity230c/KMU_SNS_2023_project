@@ -34,9 +34,11 @@ class ServerApp(QWidget):
 
         bindHbox = QHBoxLayout()
         # ip input
+        bindHbox.addWidget(QLabel("IP:"))
         self.ip = QLineEdit(self)
         bindHbox.addWidget(self.ip)
         # port input
+        bindHbox.addWidget(QLabel("port:"))
         self.port = QLineEdit(self)
         bindHbox.addWidget(self.port)
 
@@ -75,6 +77,11 @@ class ServerApp(QWidget):
         logNetStatBox.addLayout(logBox)
         mainBox.addLayout(logNetStatBox)
         self.setLayout(mainBox)
+
+        # default value
+        self.ip.setText("127.0.0.1")
+        self.port.setText("8080")
+
         # show
         self.show()
 
@@ -108,7 +115,7 @@ class ServerApp(QWidget):
 
     def socket(self):
         try:
-            self.setText("[SystemInfo]setting socket")
+            self.setText("[SystemInfo] setting socket")
         except Exception as error:
             print(error)
 
@@ -119,20 +126,21 @@ class ServerApp(QWidget):
             # bind는 멀티 쓰레드로 가면 프로그램이 꺼진다 -> 왜?
             self.server.bind(ip,port)
             # self.listenWorker.before_bind_signal.emit(ip, port)
-            self.setText("[SystemInfo]bind")
+            self.setText("[SystemInfo] bind")
 
             ipv4_binary_address = inet_pton(AF_INET, ip)
-            self.setText(f"IPv4 Address: {int.from_bytes(ipv4_binary_address, sys.byteorder)} {ipv4_binary_address}")
+            self.setText(f"[SystemInfo] pton({ip}) = {hex(int.from_bytes(ipv4_binary_address, sys.byteorder))}")
+
         except Exception as error:
             print(error)
 
     @pyqtSlot(bool)
     def afterListen(self, isSuccess):
         if isSuccess:
-            self.setText("[SystemInfo]open listening port and execute accpet()")
+            self.setText("[SystemInfo] open listening port and execute accpet()")
             self.viewNetStat()
         else:
-            self.setText("[SystemInfo]Listen fail")
+            self.setText("[SystemInfo] Listen fail")
 
     @pyqtSlot(tuple)
     def accept(self, addr):

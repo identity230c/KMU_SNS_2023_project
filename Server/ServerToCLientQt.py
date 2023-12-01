@@ -6,7 +6,9 @@ from QWorkers.ClientWorker import ClientWorker
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from Server import server
 from Server.server import RecvSendSocket
-
+from socket import *
+from DnsInfo import getnamebyhost, gethostbyname
+from Byteorder import convert_to_bytes
 
 class ServerToClient(QWidget):
     def __init__(self, socket):
@@ -17,7 +19,8 @@ class ServerToClient(QWidget):
     def initUI(self):
         # title and size
         self.setWindowTitle('FromServerToClient')
-        self.setGeometry(300, 300, 300, 200)
+        self.setGeometry(900, 300, 600, 400)
+
 
         mainBox = QVBoxLayout()
 
@@ -49,12 +52,11 @@ class ServerToClient(QWidget):
 
         sendHBox = QHBoxLayout()
         # send message
+        self.chatInput = QLineEdit(self)
+        self.chatInput.returnPressed.connect(self.on_enter_pressed)
+        sendHBox.addWidget(self.chatInput)
         self.sendBtn = QPushButton('send', self)
         sendHBox.addWidget(self.sendBtn)
-
-        # text input
-        self.chatInput = QLineEdit(self)
-        sendHBox.addWidget(self.chatInput)
         mainBox.addLayout(sendHBox)
 
         # log text
@@ -72,12 +74,28 @@ class ServerToClient(QWidget):
     @pyqtSlot(bool, str)
     def afterSend(self,isSuccess, data):
         if isSuccess:
-            self.setText(self.clientTitle+data)
+            self.setText(f"{self.serverTitle} {data}")
 
     @pyqtSlot(str)
     def recv(self, data):
-        self.setText(self.clientTitle+data)
+        ret = ""
+        if len(data.split(" ")) >= 2:
+            [method, attr] = data.split(" ")
+            if method == "gethostbyname":
+                ret += gethostbyname(attr)
+            if method == "getnamebyhost":
+                ret += getnamebyhost(attr)
+            if method == "big":
+                ret += " ".join(convert_to_bytes(attr, "big"))
+            if method == "little":
+                ret += " ".join(convert_to_bytes(attr, "little"))
 
+        self.setText(f"{self.clientTitle} {data}")
+        if ret:
+            self.chatInput.setText(ret)
+            self.beforeSend()
+            self.chatInput.setText("")
+        
     def setText(self, newTxt):
         txt = self.log.toPlainText()
         self.log.setText(txt + newTxt +"\n")
@@ -126,3 +144,9 @@ class ServerToClient(QWidget):
         self.sendThread.quit()
 
         self.close()
+
+    def on_enter_pressed(self):
+        text = self.chatInput.text()
+        if text:
+            self.beforeSend()
+            self.chatInput.setText("")
