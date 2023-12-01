@@ -1,6 +1,6 @@
 import sys
 from socket import *
-from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit, QLabel
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 import client
 from QWorkers.ClientWorker import ClientWorker
@@ -12,6 +12,8 @@ class ClientApp(QWidget):
     def __init__(self):
         super().__init__()
         self.client = client.Client()
+        self.serverTitle = "Server"
+        self.clientTitle = "Client"
         self.initUI()
         self.initThread()
 
@@ -43,8 +45,35 @@ class ClientApp(QWidget):
         connectHbox.addWidget(self.connectBtn)
         mainBox.addLayout(connectHbox)
 
-        sendHBox = QHBoxLayout()
+        # connectInfo
+        headBox = QVBoxLayout()
+        headheadBox = QHBoxLayout()
+        headheadBox.addWidget(QLabel("socket"))
+        headheadBox.addWidget(QLabel("ip"))
+        headheadBox.addWidget(QLabel("port"))
+
+        serverInfoBox = QHBoxLayout()
+        clientInfoBox = QHBoxLayout()
+
+        self.serverIpLabel = QLabel()
+        self.serverPortLabel = QLabel()
+        serverInfoBox.addWidget(QLabel("Server : "))
+        serverInfoBox.addWidget(self.serverIpLabel)
+        serverInfoBox.addWidget(self.serverPortLabel)
+
+        self.clientIpLabel = QLabel()
+        self.clientPortLabel = QLabel()
+        clientInfoBox.addWidget(QLabel("Client : "))
+        clientInfoBox.addWidget(self.clientIpLabel)
+        clientInfoBox.addWidget(self.clientPortLabel)
+
+        headBox.addLayout(headheadBox)
+        headBox.addLayout(serverInfoBox)
+        headBox.addLayout(clientInfoBox)
+        mainBox.addLayout(headBox)
+
         # send message
+        sendHBox = QHBoxLayout()
         self.sendBtn = QPushButton('send', self)
         sendHBox.addWidget(self.sendBtn)
 
@@ -136,6 +165,19 @@ class ClientApp(QWidget):
                 self.send_worker.after_send_signal.connect(self.afterSend)
                 self.sendBtn.clicked.connect(self.beforeSend)
 
+                self.recv_worker.disconnect_signal.connect(self.disconnectSocket)
+
+                ip,port = self.client.socket.getpeername()
+                self.serverTitle = f"[Server-{ip}:{port}] : "
+                self.serverIpLabel.setText(ip)
+                self.serverPortLabel.setText(str(port))
+                ip,port = self.client.socket.getsockname()
+                self.clientTitle = f"[Client-{ip}:{port}] : "
+                self.clientIpLabel.setText(ip)
+                self.clientPortLabel.setText(str(port))
+
+
+
         except Exception as error:
             print(error)
 
@@ -145,11 +187,11 @@ class ClientApp(QWidget):
     @pyqtSlot(bool, str)
     def afterSend(self,isSuccess, data):
         if isSuccess:
-            self.setText("[Client]"+data)
+            self.setText(self.clientTitle+data)
 
     @pyqtSlot(str)
     def recv(self, data):
-        self.setText("[Server]"+data)
+        self.setText(self.serverTitle+data)
 
     @pyqtSlot(bool)
     def getnamebyhost(self):
@@ -176,6 +218,12 @@ class ClientApp(QWidget):
         except Exception as e:
             print("에러발생", e)
 
+
+    @pyqtSlot()
+    def disconnectSocket(self):
+        self.recvThread.quit()
+        self.sendThread.quit()
+        self.setText("서버와의 연결이 끊어졌습니다")
 
 if __name__ == '__main__':
     try:

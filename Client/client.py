@@ -4,7 +4,7 @@ class Client:
   def socket(self):
     # Client-socket
     self.socket = socket(AF_INET, SOCK_STREAM)
-  
+
   def connect(self, ip, port):
     # Client-connect
     self.socket.connect((ip, port))
