@@ -72,11 +72,11 @@ class ServerToClient(QWidget):
     @pyqtSlot(bool, str)
     def afterSend(self,isSuccess, data):
         if isSuccess:
-            self.setText("[Server]"+data)
+            self.setText(self.clientTitle+data)
 
     @pyqtSlot(str)
     def recv(self, data):
-        self.setText("[Client]"+data)
+        self.setText(self.clientTitle+data)
 
     def setText(self, newTxt):
         txt = self.log.toPlainText()
@@ -103,10 +103,14 @@ class ServerToClient(QWidget):
 
         cIp, cPort = socket.getpeername()
         sIp, sPort = socket.getsockname()
+
         self.clientIpLabel.setText(cIp)
         self.clientPortLabel.setText(str(cPort))
         self.serverIpLabel.setText(sIp)
         self.serverPortLabel.setText(str(sPort))
+
+        self.serverTitle = f"[Server-{sIp}:{sPort}]"
+        self.clientTitle = f"[Client-{cIp}:{cPort}]"
 
         self.recv_worker.disconnect_signal.connect(self.disconnectSocket)
 

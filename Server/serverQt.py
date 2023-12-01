@@ -1,12 +1,12 @@
 import sys
 
 from PyQt5.QtCore import QThread, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit,QLabel
 import server
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from QWorkers.ServerWorker import ServerWorker
 from Server.ServerToCLientQt import ServerToClient
-
+from ServerNetstat import executeNetstat
 
 class ServerApp(QWidget):
 
@@ -20,7 +20,7 @@ class ServerApp(QWidget):
     def initUI(self):
         # title and size
         self.setWindowTitle('Server')
-        self.setGeometry(300, 300, 300, 200)
+        self.setGeometry(900, 300, 600, 400)
 
         mainBox = QVBoxLayout()
 
@@ -46,32 +46,43 @@ class ServerApp(QWidget):
 
         listenAccessHBox = QHBoxLayout()
         # listen message
-        self.listenBtn = QPushButton('listen', self)
+        self.listenBtn = QPushButton('listen() and accept()', self)
         listenAccessHBox.addWidget(self.listenBtn)
         # access message
-        self.accessBtn = QPushButton('access', self)
-        listenAccessHBox.addWidget(self.accessBtn)
+        self.netstatBtn = QPushButton('netStat()', self)
+        self.netstatBtn.clicked.connect(self.viewNetStat)
+        listenAccessHBox.addWidget(self.netstatBtn)
         mainBox.addLayout(listenAccessHBox)
 
+        logNetStatBox = QHBoxLayout()
 
-        sendHBox = QHBoxLayout()
-        # send message
-        self.sendBtn = QPushButton('send', self)
-        sendHBox.addWidget(self.sendBtn)
-
-        # text input
-        self.chatInput = QLineEdit(self)
-        sendHBox.addWidget(self.chatInput)
-        mainBox.addLayout(sendHBox)
+        netStatBox = QVBoxLayout()
+        netStatTitle= QLabel("NetStatInfo")
+        self.netStatText = QTextEdit()
+        self.netStatText.setReadOnly(True)
+        netStatBox.addWidget(netStatTitle)
+        netStatBox.addWidget(self.netStatText)
 
         # log text
+        logBox = QVBoxLayout()
         self.log = QTextEdit()
         self.log.setReadOnly(True)
-        mainBox.addWidget(self.log)
+        logBox.addWidget(QLabel("Log"))
+        logBox.addWidget(self.log)
 
+        logNetStatBox.addLayout(netStatBox)
+        logNetStatBox.addLayout(logBox)
+        mainBox.addLayout(logNetStatBox)
         self.setLayout(mainBox)
         # show
         self.show()
+
+    def viewNetStat(self):
+        try:
+            ret = executeNetstat(int(self.port.text()))
+            self.netStatText.setText(ret)
+        except Exception as e:
+            print("view netstat에서 에러발생", e)
 
     def initThread(self):
         self.listenWorker = ServerWorker(self.server)
@@ -91,8 +102,7 @@ class ServerApp(QWidget):
         self.listenBtn.clicked.connect(self.listenWorker.listen)
         self.listenWorker.listen_signal.connect(self.afterListen)
 
-        # accept
-        self.accessBtn.clicked.connect(self.listenWorker.accept)
+        self.netstatBtn.clicked.connect(self.listenWorker.accept)
         self.listenWorker.accept_signal.connect(self.accept)
 
     def socket(self):
@@ -115,7 +125,8 @@ class ServerApp(QWidget):
     @pyqtSlot(bool)
     def afterListen(self, isSuccess):
         if isSuccess:
-            self.setText("[SystemInfo]Listen now")
+            self.setText("[SystemInfo]open listening port and execute accpet()")
+            self.viewNetStat()
         else:
             self.setText("[SystemInfo]Listen fail")
 
@@ -126,6 +137,7 @@ class ServerApp(QWidget):
         # set send-recv worker
         try:
             self.s2cList.append(ServerToClient(self.server.clientSock))
+            self.viewNetStat()
         except Exception as e:
             print(e)
 
