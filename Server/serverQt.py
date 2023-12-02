@@ -4,10 +4,13 @@ from socket import *
 from PyQt5.QtCore import QThread, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QTextEdit,QLabel
 import server
+from QWorkers.ReadWriteThread import DatabaseWithLock
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from QWorkers.ServerWorker import ServerWorker
 from Server.ServerToCLientQt import ServerToClient
 from ServerNetstat import executeNetstat
+from utils.ipconifg import executeIpConfig
+from utils.SaveLoadJson import SaveLoadJson
 
 class ServerApp(QWidget):
 
@@ -17,6 +20,16 @@ class ServerApp(QWidget):
         self.server = server.Server()
         self.initUI()
         self.initThread()
+        self.db = DatabaseWithLock(SaveLoadJson())
+
+    def setDBKey(self, key, value):
+        self.db.setKey(key, value)
+
+    def getDBKey(self, key="money"):
+        try:
+            return self.db.getKey(key)
+        except Exception as e:
+            print("error in getDBKey",e)
 
     def initUI(self):
         # title and size
@@ -27,7 +40,10 @@ class ServerApp(QWidget):
 
         # sock
         sockHbox = QHBoxLayout()
-        sockHbox.addStretch(3)
+        sockHbox.addStretch(1)
+        sockHbox.addWidget(QLabel("물리적 주소 : "))
+        sockHbox.addWidget(QLabel(executeIpConfig()))
+        sockHbox.addStretch(1)
         self.sockBtn = QPushButton('socket()', self)
         sockHbox.addWidget(self.sockBtn)
         mainBox.addLayout(sockHbox)
@@ -148,7 +164,7 @@ class ServerApp(QWidget):
 
         # set send-recv worker
         try:
-            self.s2cList.append(ServerToClient(self.server.clientSock))
+            self.s2cList.append(ServerToClient(self.server.clientSock, self.db))
             self.viewNetStat()
         except Exception as e:
             print(e)

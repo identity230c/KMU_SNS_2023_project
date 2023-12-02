@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QL
     QTextEdit, QDialog, QLabel
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 from QWorkers.ClientWorker import ClientWorker
+from QWorkers.ReadWriteThread import ReaderThread, WriterThread
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from Server import server
 from Server.server import RecvSendSocket
@@ -11,15 +12,16 @@ from DnsInfo import getnamebyhost, gethostbyname
 from Byteorder import convert_to_bytes
 
 class ServerToClient(QWidget):
-    def __init__(self, socket):
+    def __init__(self, socket, db):
         super().__init__()
         self.initUI()
         self.setSocket(socket)
+        self.db = db
 
     def initUI(self):
         # title and size
         self.setWindowTitle('FromServerToClient')
-        self.setGeometry(900, 300, 600, 400)
+        self.setGeometry(300, 300, 600, 400)
 
 
         mainBox = QVBoxLayout()
@@ -78,24 +80,49 @@ class ServerToClient(QWidget):
 
     @pyqtSlot(str)
     def recv(self, data):
-        ret = ""
-        if len(data.split(" ")) >= 2:
-            [method, attr] = data.split(" ")
-            if method == "gethostbyname":
-                ret += gethostbyname(attr)
-            if method == "getnamebyhost":
-                ret += getnamebyhost(attr)
-            if method == "big":
-                ret += " ".join(convert_to_bytes(attr, "big"))
-            if method == "little":
-                ret += " ".join(convert_to_bytes(attr, "little"))
+        try:
+            ret = ""
+            if len(data.split(" ")) >= 2:
+                if len(data.split(" ")) == 2:
+                    [method, attr] = data.split(" ")
+                    if method == "gethostbyname":
+                        ret += gethostbyname(attr)
+                    if method == "getnamebyhost":
+                        ret += getnamebyhost(attr)
+                    if method == "big":
+                        ret += " ".join(convert_to_bytes(attr, "big"))
+                    if method == "little":
+                        ret += " ".join(convert_to_bytes(attr, "little"))
+                    if method == "get":
+                        print("getValue")
+                        readThread = ReaderThread(self.db, attr, self.recvGet)
+                        readThread.run()
+                elif len(data.split(" ")) == 3:
+                    [method, key, value] = data.split(" ")
+                    if method == "set":
+                        writeThread = WriterThread(self.db,key,value, self.recvSet)
+                        writeThread.run()
 
-        self.setText(f"{self.clientTitle} {data}")
-        if ret:
-            self.chatInput.setText(ret)
-            self.beforeSend()
+
+            self.setText(f"{self.clientTitle} {data}")
+            if ret:
+                self.chatInput.setText(ret)
+                self.beforeSend()
             self.chatInput.setText("")
-        
+        except Exception as e:
+            print("error in serverToClient, recv",e)
+
+    @pyqtSlot(str, str)
+    def recvGet(self, getKey, getValue):
+        self.chatInput.setText(f"GET - {getKey} : {getValue}")
+        self.beforeSend()
+
+    @pyqtSlot(str, str)
+    def recvSet(self, setKey, setValue):
+        self.chatInput.setText(f"SET - {setKey} : {setValue}")
+        self.beforeSend()
+
+
     def setText(self, newTxt):
         txt = self.log.toPlainText()
         self.log.setText(txt + newTxt +"\n")

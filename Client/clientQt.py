@@ -5,7 +5,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 import client
 from QWorkers.ClientWorker import ClientWorker
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
-
+from utils.ipconifg import executeIpConfig
 
 class ClientApp(QWidget):
 
@@ -20,13 +20,17 @@ class ClientApp(QWidget):
     def initUI(self):
         # title and size
         self.setWindowTitle('Client')
-        self.setGeometry(900, 300, 600, 400)
+        self.setGeometry(600, 300, 600, 400)
 
         mainBox = QVBoxLayout()
 
         # sock
         sockHbox = QHBoxLayout()
-        sockHbox.addStretch(3)
+        #sockHbox.addStretch(3)
+        sockHbox.addStretch(1)
+        sockHbox.addWidget(QLabel("물리적 주소 : "))
+        sockHbox.addWidget(QLabel(executeIpConfig()))
+        sockHbox.addStretch(1)
         self.sockBtn = QPushButton('socket()', self)
         self.sockBtn.clicked.connect(self.socket)
         sockHbox.addWidget(self.sockBtn)
