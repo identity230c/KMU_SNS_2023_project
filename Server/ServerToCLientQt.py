@@ -16,13 +16,13 @@ class ServerToClient(QWidget):
         super().__init__()
         self.initUI()
         self.setSocket(socket)
+        self.sleep = 0
         self.db = db
 
     def initUI(self):
         # title and size
         self.setWindowTitle('FromServerToClient')
         self.setGeometry(300, 300, 600, 400)
-
 
         mainBox = QVBoxLayout()
 
@@ -95,12 +95,18 @@ class ServerToClient(QWidget):
                         ret += " ".join(convert_to_bytes(attr, "little"))
                     if method == "get":
                         print("getValue")
-                        readThread = ReaderThread(self.db, attr, self.recvGet)
+                        readThread = ReaderThread(self.db, attr, self.recvGet, self.sleep)
                         readThread.run()
+                    if method == "setsleep":
+                        try:
+                            self.sleep = int(attr)
+                            ret += f"sleep in set to {attr}"
+                        except:
+                            self.setText("Please enter an integer as a parameter.")
                 elif len(data.split(" ")) == 3:
                     [method, key, value] = data.split(" ")
                     if method == "set":
-                        writeThread = WriterThread(self.db,key,value, self.recvSet)
+                        writeThread = WriterThread(self.db,key,value, self.recvSet, self.sleep)
                         writeThread.run()
 
 
