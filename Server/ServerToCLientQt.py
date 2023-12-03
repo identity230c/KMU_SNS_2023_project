@@ -8,7 +8,7 @@ from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from Server import server
 from Server.server import RecvSendSocket
 from socket import *
-from DnsInfo import getnamebyhost, gethostbyname
+from DnsInfo import gethostbyaddr, gethostbyname
 from Byteorder import convert_to_bytes
 
 class ServerToClient(QWidget):
@@ -87,8 +87,8 @@ class ServerToClient(QWidget):
                     [method, attr] = data.split(" ")
                     if method == "gethostbyname":
                         ret += gethostbyname(attr)
-                    if method == "getnamebyhost":
-                        ret += getnamebyhost(attr)
+                    if method == "gethostbyaddr":
+                        ret += gethostbyaddr(attr)
                     if method == "big":
                         ret += " ".join(convert_to_bytes(attr, "big"))
                     if method == "little":

@@ -1,6 +1,6 @@
 import socket
 
-def getnamebyhost(ip_address):
+def gethostbyaddr(ip_address):
     message = ""
     try:
         host_name, _ = socket.getnameinfo((ip_address, 0), socket.NI_NAMEREQD)
