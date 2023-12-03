@@ -118,7 +118,10 @@ class ServerToClient(QWidget):
 
     @pyqtSlot(str, str)
     def recvGet(self, getKey, getValue):
-        self.chatInput.setText(f"GET - {getKey} : {getValue}")
+        if getValue != "":
+            self.chatInput.setText(f"GET - {getKey} : {getValue}")
+        else:
+            self.chatInput.setText(f"GET - Error. {getKey} is not Found")
         self.beforeSend()
         self.chatInput.setText("")
 

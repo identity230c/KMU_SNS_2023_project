@@ -19,7 +19,18 @@ def executeIpConfig():
             if connect:
                 addr = tmp.split(" : ")[-1]
                 break
-    ret = f"{addr}({adap})"
+
+    if connect:
+        ret = f"{addr}({adap})"
+    else:
+        for i in ret:
+            tmp = i.strip()
+            if "어댑터" in tmp:
+                adap = tmp[:-1]
+            elif "물리적" in tmp:
+                addr = tmp.split(" : ")[-1]
+                break
+        ret = f"{addr}({adap})"
     return ret
 
 if __name__ == "__main__":

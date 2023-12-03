@@ -2,8 +2,13 @@ import json
 
 class SaveLoadJson:
     def __init__(self):
-        with open('../utils/jsonFile.json', 'r') as f:
-            self.dict = json.load(f)
+        try:
+            with open('../utils/jsonFile.json', 'r') as f:
+                self.dict = json.load(f)
+        except FileNotFoundError:
+            self.dict = {}
+            with open('../utils/jsonFile.json', 'w') as f:
+                json.dump(self.dict, f)
 
     def setKey(self, key, value):
         self.dict[key] = value
