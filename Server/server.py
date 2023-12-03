@@ -12,7 +12,7 @@ class Server:
 
   def listen(self):
     # Server-listen
-    self.listenSock.listen(3)
+    self.listenSock.listen(10)
     
   def accept(self):
     # client sock and addr

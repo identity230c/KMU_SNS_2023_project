@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QPushButton, QL
     QTextEdit, QDialog, QLabel
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 from QWorkers.ClientWorker import ClientWorker
-from QWorkers.ReadWriteThread import ReaderThread, WriterThread
+from QWorkers.ReadWriteThread import WriteWorker, ReadWorker
 from QWorkers.RecvSendWorker import RecvWorker, SendWorker
 from Server import server
 from Server.server import RecvSendSocket
@@ -18,6 +18,7 @@ class ServerToClient(QWidget):
         self.setSocket(socket)
         self.sleep = 0
         self.db = db
+        self.setReadWrite()
 
     def initUI(self):
         # title and size
@@ -94,9 +95,7 @@ class ServerToClient(QWidget):
                     if method == "little":
                         ret += " ".join(convert_to_bytes(attr, "little"))
                     if method == "get":
-                        print("getValue")
-                        readThread = ReaderThread(self.db, attr, self.recvGet, self.sleep)
-                        readThread.run()
+                        self.readWorker.before_read_signal.emit(attr)
                     if method == "setsleep":
                         try:
                             self.sleep = int(attr)
@@ -106,8 +105,7 @@ class ServerToClient(QWidget):
                 elif len(data.split(" ")) == 3:
                     [method, key, value] = data.split(" ")
                     if method == "set":
-                        writeThread = WriterThread(self.db,key,value, self.recvSet, self.sleep)
-                        writeThread.run()
+                        self.writeWorker.before_write_signal.emit(key, value)
 
 
             self.setText(f"{self.clientTitle} {data}")
@@ -122,12 +120,13 @@ class ServerToClient(QWidget):
     def recvGet(self, getKey, getValue):
         self.chatInput.setText(f"GET - {getKey} : {getValue}")
         self.beforeSend()
+        self.chatInput.setText("")
 
     @pyqtSlot(str, str)
     def recvSet(self, setKey, setValue):
         self.chatInput.setText(f"SET - {setKey} : {setValue}")
         self.beforeSend()
-
+        self.chatInput.setText("")
 
     def setText(self, newTxt):
         txt = self.log.toPlainText()
@@ -164,6 +163,25 @@ class ServerToClient(QWidget):
         self.clientTitle = f"[Client-{cIp}:{cPort}]"
 
         self.recv_worker.disconnect_signal.connect(self.disconnectSocket)
+
+    def setReadWrite(self):
+        self.readWorker = ReadWorker(self.db, self.clientTitle)
+        self.readThread = QThread()
+        self.readWorker.moveToThread(self.readThread)
+        self.readThread.start()
+        self.readWorker.after_read_signal.connect(self.recvGet)
+        self.readWorker.log_signal.connect(self.lockLog)
+
+        self.writeWorker = WriteWorker(self.db, self.clientTitle)
+        self.wrtieThread = QThread()
+        self.writeWorker.moveToThread(self.wrtieThread)
+        self.wrtieThread.start()
+        self.writeWorker.after_write_signal.connect(self.recvSet)
+        self.writeWorker.log_signal.connect(self.lockLog)
+
+    @pyqtSlot(str)
+    def lockLog(self, log):
+        self.db.writeLockLog(log)
 
     @pyqtSlot()
     def disconnectSocket(self):

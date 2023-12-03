@@ -20,7 +20,7 @@ class ServerApp(QWidget):
         self.server = server.Server()
         self.initUI()
         self.initThread()
-        self.db = DatabaseWithLock(SaveLoadJson())
+        self.db = DatabaseWithLock(SaveLoadJson(), self.lockLog)
 
     def setDBKey(self, key, value):
         self.db.setKey(key, value)
@@ -92,6 +92,17 @@ class ServerApp(QWidget):
         logNetStatBox.addLayout(netStatBox)
         logNetStatBox.addLayout(logBox)
         mainBox.addLayout(logNetStatBox)
+
+        # lock log text
+        lockBox = QVBoxLayout()
+        self.lockLog = QTextEdit()
+        self.lockLog.setReadOnly(True)
+        lockBox.addWidget(QLabel("Lock Log"))
+        lockBox.addWidget(self.lockLog)
+
+        mainBox.addLayout(lockBox)
+
+
         self.setLayout(mainBox)
 
         # default value
